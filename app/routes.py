@@ -5,9 +5,11 @@ from zoneinfo import ZoneInfo
 
 from .auth import *
 from .logic import get_user, create_user, user_exists, parse_job_period, build_description, build_pay_day
+from .extensions import limiter
 
 bp = Blueprint("routes", __name__)
 
+@limiter.limit("10 per 10 minutes")
 @bp.route("/token", methods=['GET'])
 def get_token():
     creds = request.json
@@ -19,7 +21,6 @@ def get_token():
 
     new_user = create_user(username, password)
     return new_user.create_token(password)
-
 
 @bp.route("/calendar", methods=['GET'])
 def calendar_feed():
@@ -71,7 +72,6 @@ def calendar_feed():
         cal.add_component(event)
 
     return Response(cal.to_ical(), mimetype="text/calendar")
-
 
 @bp.route("/raw", methods=['GET'])
 def raw_job_data():

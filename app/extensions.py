@@ -20,4 +20,4 @@ def _get_client_ip():
 
 db = SQLAlchemy()
 migrate = Migrate()
-limiter = Limiter(_get_client_ip, default_limits=[])
+limiter = Limiter(_get_client_ip, default_limits=["1 per minute"])
