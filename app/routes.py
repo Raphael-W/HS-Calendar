@@ -47,6 +47,7 @@ def calendar_feed():
     month = None
     month_pay = 0
     month_hours = 0
+    start_date = None
 
     for job in jobs:
         event = Event()
@@ -78,6 +79,15 @@ def calendar_feed():
         event.add("uid", job.get("EventID", ""))
 
         cal.add_component(event)
+
+    if month_hours > 0:
+        if start_date.month == 12:
+            next_month_date = date(start_date.year + 1, 1, 1)
+        else:
+            next_month_date = date(start_date.year, start_date.month + 1, 1)
+
+        pay_day = build_pay_day(next_month_date, month_pay, month_hours)
+        cal.add_component(pay_day)
 
     return Response(cal.to_ical(), mimetype="text/calendar")
 
