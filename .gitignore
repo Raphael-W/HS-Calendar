@@ -7,6 +7,9 @@ __pycache__/
 build/
 dist/
 
+# Claude
+/.claude
+
 # uv
 .venv/
 uv-cache/

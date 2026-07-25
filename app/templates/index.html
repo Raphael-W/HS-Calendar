@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>High Society — Calendar Subscription</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --bg:        #0b0b0d;
+    --card:      #141416;
+    --line:      #26262b;
+    --line-soft: #1c1c20;
+    --ink:       #f2f0ec;
+    --ink-dim:   #9a978f;
+    --ink-faint: #67645e;
+    --gold:      #c9a227;
+    --gold-soft: #e3c464;
+    --danger:    #e05a5a;
+    --danger-bg: #2a1618;
+    --ok:        #4fa87a;
+    --radius:    14px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --serif: "Hoefler Text", "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+
+  html { height: 100%; }
+
+  body {
+    margin: 0;
+    /* min-height, not height: the body must be free to grow past the viewport,
+       otherwise centering pushes tall content out of reach at both ends. */
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: safe center;
+    padding: 32px 20px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Ambient warmth behind the card */
+  body::before {
+    content: "";
+    position: fixed;
+    top: -30vh; left: 50%;
+    width: min(900px, 130vw);
+    aspect-ratio: 1;
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(201,162,39,.13), rgba(201,162,39,0) 62%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .shell { width: 100%; max-width: 430px; position: relative; z-index: 1; }
+
+  /* ---- Masthead ---- */
+  header { text-align: center; margin-bottom: 30px; }
+
+  .crest {
+    font-family: var(--serif);
+    font-size: 11px;
+    letter-spacing: .34em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+  }
+  .crest::before, .crest::after {
+    content: "";
+    display: inline-block;
+    width: 26px; height: 1px;
+    vertical-align: 4px;
+    background: linear-gradient(90deg, transparent, var(--gold));
+    margin-right: 12px;
+  }
+  .crest::after {
+    background: linear-gradient(90deg, var(--gold), transparent);
+    margin: 0 0 0 12px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(30px, 8vw, 40px);
+    line-height: 1.12;
+    letter-spacing: -.01em;
+    margin: 0 0 12px;
+  }
+
+  .sub {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--ink-dim);
+    margin: 0 auto;
+    max-width: 34ch;
+  }
+
+  /* ---- Card ---- */
+  .card {
+    background: linear-gradient(180deg, #171719, var(--card));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 28px 26px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.03) inset, 0 24px 60px -24px rgba(0,0,0,.9);
+  }
+
+  .field { margin-bottom: 16px; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+
+  input {
+    width: 100%;
+    background: #0d0d0f;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--ink);
+    font: 15px/1.2 var(--sans);
+    padding: 12px 13px;
+    transition: border-color .16s, box-shadow .16s;
+  }
+  input::placeholder { color: #4d4a45; }
+  input:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(201,162,39,.14);
+  }
+  input:disabled { opacity: .55; cursor: not-allowed; }
+
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 62px; }
+  .peek {
+    position: absolute;
+    top: 50%; right: 6px;
+    transform: translateY(-50%);
+    background: none;
+    border: 0;
+    color: var(--ink-faint);
+    font: 600 10px/1 var(--sans);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 8px 9px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: color .16s, background .16s;
+  }
+  .peek:hover { color: var(--ink-dim); background: rgba(255,255,255,.05); }
+
+  button.primary {
+    width: 100%;
+    margin-top: 8px;
+    background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+    color: #24200f;
+    border: 0;
+    border-radius: 9px;
+    font: 600 14.5px/1 var(--sans);
+    letter-spacing: .01em;
+    padding: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    transition: filter .16s, transform .08s;
+  }
+  button.primary:hover:not(:disabled) { filter: brightness(1.07); }
+  button.primary:active:not(:disabled) { transform: translateY(1px); }
+  button.primary:disabled { opacity: .6; cursor: progress; }
+
+  .spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(36,32,15,.3);
+    border-top-color: #24200f;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Alert ---- */
+  .alert {
+    display: flex;
+    gap: 10px;
+    background: var(--danger-bg);
+    border: 1px solid rgba(224,90,90,.32);
+    border-radius: 9px;
+    padding: 12px 13px;
+    margin-bottom: 18px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    animation: rise .22s ease-out;
+  }
+  .alert .mark { color: var(--danger); font-weight: 700; line-height: 1.4; }
+  .alert strong { display: block; margin-bottom: 2px; color: #f3b7b7; }
+  .alert span { color: #c2999a; }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(-5px); } }
+
+  /* ---- Result ---- */
+  .result { animation: rise .28s ease-out; }
+
+  .seal {
+    text-align: center;
+    margin-bottom: 22px;
+  }
+  .seal .tick {
+    width: 42px; height: 42px;
+    margin: 0 auto 13px;
+    border-radius: 50%;
+    border: 1px solid rgba(79,168,122,.4);
+    background: rgba(79,168,122,.1);
+    color: var(--ok);
+    display: grid;
+    place-items: center;
+    font-size: 19px;
+  }
+  .seal h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 21px;
+    margin: 0 0 6px;
+  }
+  .seal p { margin: 0; font-size: 13.5px; color: var(--ink-dim); }
+
+  .out-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .out-label label { margin: 0; }
+  .copy {
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--ink-dim);
+    font: 600 10px/1 var(--sans);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    padding: 6px 9px;
+    cursor: pointer;
+    transition: all .16s;
+  }
+  .copy:hover { border-color: var(--gold); color: var(--gold); }
+  .copy.done { border-color: var(--ok); color: var(--ok); }
+
+  .out {
+    background: #0d0d0f;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 12px 13px;
+    font: 12.5px/1.65 var(--mono);
+    color: var(--gold-soft);
+    word-break: break-all;
+    user-select: all;
+    max-height: 108px;
+    overflow-y: auto;
+  }
+
+  .steps {
+    margin: 22px 0 0;
+    padding: 18px 0 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .steps h3 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 11px;
+  }
+  .steps ol { margin: 0; padding-left: 17px; }
+  .steps li {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--ink-dim);
+    margin-bottom: 5px;
+  }
+  .steps li::marker { color: var(--gold); font-variant-numeric: tabular-nums; }
+
+  /* Security note on the result stage */
+  .notice {
+    margin-top: 20px;
+    padding: 13px 14px;
+    border: 1px solid var(--line-soft);
+    border-left: 2px solid rgba(201,162,39,.5);
+    border-radius: 4px 9px 9px 4px;
+    background: rgba(201,162,39,.035);
+  }
+  .notice h3 {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin: 0 0 9px;
+  }
+  .notice p {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink-dim);
+    margin: 0 0 8px;
+  }
+  .notice p:last-child { margin-bottom: 0; }
+  .notice strong { color: var(--ink); font-weight: 600; }
+  .notice a { color: var(--gold-soft); text-decoration: none; border-bottom: 1px solid rgba(227,196,100,.35); }
+  .notice a:hover { border-bottom-color: var(--gold-soft); }
+
+  .restart {
+    width: 100%;
+    margin-top: 20px;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    color: var(--ink-dim);
+    font: 500 13px/1 var(--sans);
+    padding: 12px;
+    cursor: pointer;
+    transition: all .16s;
+  }
+  .restart:hover { border-color: #35353b; color: var(--ink); }
+
+  footer {
+    margin-top: 22px;
+    text-align: center;
+    font-size: 11.5px;
+    line-height: 1.65;
+    color: var(--ink-faint);
+  }
+  footer p { margin: 0 0 5px; }
+  footer p:last-child { margin-bottom: 0; }
+  footer .disclaimer { color: #4f4d48; }
+
+  .hidden { display: none !important; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<main class="shell">
+
+  <header>
+    <div class="crest">High Society</div>
+    <h1>Your shifts,<br>in your calendar</h1>
+    <p class="sub">Sign in with your High&nbsp;Society account to generate the link for your calendar.</p>
+  </header>
+
+  <div class="card">
+
+    <!-- ============ FORM ============ -->
+    <div id="stage-form">
+      <div id="alert" class="alert hidden">
+        <span class="mark">!</span>
+        <div>
+          <strong id="alert-title"></strong>
+          <span id="alert-body"></span>
+        </div>
+      </div>
+
+      <form id="form" novalidate>
+        <div class="field">
+          <label for="username">Email</label>
+          <input id="username" name="username" type="text" autocomplete="username"
+                 autocapitalize="none" autocorrect="off" spellcheck="false"
+                 placeholder="john.smith@gmail.com" required>
+        </div>
+
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="pw-wrap">
+            <input id="password" name="password" type="password" autocomplete="current-password"
+                   placeholder="••••••••" required>
+            <button type="button" class="peek" id="peek" aria-label="Show password">Show</button>
+          </div>
+        </div>
+
+        <button type="submit" class="primary" id="submit">
+          <span id="submit-label">Generate link</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- ============ RESULT ============ -->
+    <div id="stage-result" class="result hidden">
+      <div class="seal">
+        <div class="tick">✓</div>
+        <h2>Link ready</h2>
+        <p>Subscribe once and your shifts stay in sync.</p>
+      </div>
+
+      <div class="out-label">
+        <label for="url">Subscription URL</label>
+        <button class="copy" id="copy" type="button">Copy</button>
+      </div>
+      <div class="out" id="url"></div>
+
+      <div class="steps">
+        <h3>How to subscribe</h3>
+        <ol>
+          <li><strong>iPhone / iPad:</strong> Calendars → Add Calendar → Add Subscription Calendar.</li>
+          <li><strong>Google Calendar:</strong> Other calendars → + → From URL.</li>
+          <li><strong>Outlook:</strong> Add calendar → Subscribe from web.</li>
+        </ol>
+      </div>
+
+      <div class="notice">
+        <h3>Keep this link private</h3>
+        <p>Treat the URL like a password — anyone who has it can see your shifts.</p>
+        <p>If it is shared by accident, it is <strong>read-only</strong>: it cannot change your shifts, reveal your personal details, or sign in to the High Society app.</p>
+        <p>If you think someone has your link, email <a href="mailto:contact@raphaelwreford.com?subject=High%20Society%20Link%20Revocation">contact@raphaelwreford.com</a>, and it will be revoked.</p>
+      </div>
+
+      <button class="restart" id="restart" type="button">Generate another link</button>
+    </div>
+
+  </div>
+
+  <footer>
+    <p>Your password is never stored — it is encrypted into your personal link so shifts can be refreshed.</p>
+    <p class="disclaimer">Not affiliated with High Society.</p>
+  </footer>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  const form     = document.getElementById("form");
+  const username = document.getElementById("username");
+  const password = document.getElementById("password");
+  const submit   = document.getElementById("submit");
+  const label    = document.getElementById("submit-label");
+  const peek     = document.getElementById("peek");
+
+  const alertBox = document.getElementById("alert");
+  const alertTtl = document.getElementById("alert-title");
+  const alertMsg = document.getElementById("alert-body");
+
+  const stageForm   = document.getElementById("stage-form");
+  const stageResult = document.getElementById("stage-result");
+  const urlOut      = document.getElementById("url");
+  const copyBtn     = document.getElementById("copy");
+  const restartBtn  = document.getElementById("restart");
+
+  let busy = false;
+
+  // ---------- helpers ----------
+
+  function showError(title, body) {
+    alertTtl.textContent = title;
+    alertMsg.textContent = body;
+    alertBox.classList.remove("hidden");
+  }
+
+  function clearError() {
+    alertBox.classList.add("hidden");
+  }
+
+  function setBusy(state) {
+    busy = state;
+    submit.disabled = username.disabled = password.disabled = state;
+    if (state) {
+      label.textContent = "Signing in…";
+      if (!document.getElementById("sp")) {
+        const s = document.createElement("span");
+        s.className = "spinner";
+        s.id = "sp";
+        submit.prepend(s);
+      }
+    } else {
+      label.textContent = "Generate link";
+      const s = document.getElementById("sp");
+      if (s) s.remove();
+    }
+  }
+
+  // Pull a human message out of whatever the server returned.
+  async function describe(response) {
+    let detail = "";
+    try {
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        detail = data.description || data.message || data.error || "";
+      } catch (_) {
+        // Non-JSON (e.g. a proxy's HTML error page) — ignore the markup.
+        if (text && !/<[a-z!]/i.test(text)) detail = text.trim();
+      }
+    } catch (_) { /* body unreadable */ }
+
+    switch (response.status) {
+      case 400:
+        return ["Something was missing",
+                detail || "Please enter both your username and password."];
+
+      case 401:
+        return ["Incorrect username or password",
+                "Double-check your High Society staff login and try again."];
+
+      case 415:
+        return ["Request rejected",
+                "The server did not accept the sign-in request. Please try again."];
+
+      case 429: {
+        const retry = parseInt(response.headers.get("Retry-After"), 10);
+        let when = "Please wait a little while before trying again.";
+        if (Number.isFinite(retry) && retry > 0) {
+          when = retry < 60
+            ? `Please wait ${retry} second${retry === 1 ? "" : "s"} and try again.`
+            : `Please wait about ${Math.ceil(retry / 60)} minute${Math.ceil(retry / 60) === 1 ? "" : "s"} and try again.`;
+        }
+        return ["Too many attempts", when];
+      }
+
+      case 500:
+      case 502:
+      case 503:
+      case 504:
+        return ["High Society is not responding",
+                detail || "Their system could not be reached. Please try again shortly."];
+
+      default:
+        return ["Something went wrong",
+                detail || "Please try again in a moment."];
+    }
+  }
+
+  function showResult(token) {
+    urlOut.textContent = new URL("/calendar?token=" + encodeURIComponent(token), location.origin).href;
+    stageForm.classList.add("hidden");
+    stageResult.classList.remove("hidden");
+    copyBtn.textContent = "Copy";
+    copyBtn.classList.remove("done");
+  }
+
+  // ---------- events ----------
+
+  peek.addEventListener("click", function () {
+    const showing = password.type === "text";
+    password.type = showing ? "password" : "text";
+    peek.textContent = showing ? "Show" : "Hide";
+    peek.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+    password.focus();
+  });
+
+  form.addEventListener("submit", async function (event) {
+    event.preventDefault();
+    if (busy) return;
+
+    clearError();
+
+    const u = username.value.trim();
+    const p = password.value;
+
+    if (!u || !p) {
+      showError("Details required", "Please enter both your username and password.");
+      (u ? password : username).focus();
+      return;
+    }
+
+    setBusy(true);
+
+    let response;
+    try {
+      response = await fetch("/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ username: u, password: p })
+      });
+    } catch (_) {
+      setBusy(false);
+      showError("No connection", "Could not reach the server. Check your internet and try again.");
+      return;
+    }
+
+    if (!response.ok) {
+      setBusy(false);
+      const [title, body] = await describe(response);
+      showError(title, body);
+      if (response.status === 401) {
+        password.value = "";
+        password.focus();
+      }
+      return;
+    }
+
+    let token = "";
+    try {
+      const text = await response.text();
+      try {
+        const data = JSON.parse(text);
+        token = data.token || data.description || "";
+      } catch (_) {
+        token = text.trim().replace(/^"|"$/g, "");
+      }
+    } catch (_) { /* fall through */ }
+
+    setBusy(false);
+
+    if (!token) {
+      showError("No link returned", "The server did not return a token. Please try again.");
+      return;
+    }
+
+    password.value = "";
+    showResult(token);
+  });
+
+  copyBtn.addEventListener("click", async function () {
+    const text = urlOut.textContent;
+    let ok = false;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    } catch (_) {
+      // Clipboard API needs a secure context — fall back to a selection copy.
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText = "position:fixed;top:-1000px;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { ok = document.execCommand("copy"); } catch (_) { ok = false; }
+      ta.remove();
+    }
+
+    copyBtn.textContent = ok ? "Copied" : "Select it";
+    copyBtn.classList.toggle("done", ok);
+    setTimeout(function () {
+      copyBtn.textContent = "Copy";
+      copyBtn.classList.remove("done");
+    }, 2000);
+  });
+
+  restartBtn.addEventListener("click", function () {
+    stageResult.classList.add("hidden");
+    stageForm.classList.remove("hidden");
+    clearError();
+    username.value = "";
+    password.value = "";
+    password.type = "password";
+    peek.textContent = "Show";
+    username.focus();
+  });
+
+  username.focus();
+})();
+</script>
+</body>
+</html>

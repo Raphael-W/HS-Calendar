@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 from icalendar import Calendar, Event
-from flask import Blueprint, Response, request, abort
+from flask import Blueprint, Response, request, abort, render_template
 from zoneinfo import ZoneInfo
 
 from .auth import *
@@ -9,12 +9,20 @@ from .extensions import limiter
 
 bp = Blueprint("routes", __name__)
 
+@bp.route("/", methods=['GET'])
+@limiter.exempt
+def index():
+    return render_template("index.html")
+
+@bp.route("/token", methods=['POST'])
 @limiter.limit("10 per 10 minutes")
-@bp.route("/token", methods=['GET'])
 def get_token():
-    creds = request.json
-    username = creds["username"]
-    password = creds["password"]
+    creds = request.get_json(silent=True) or {}
+    username = (creds.get("username") or "").strip()
+    password = creds.get("password") or ""
+
+    if not (username and password):
+        abort(400, description="A username and password are required")
 
     if user := user_exists(username):
         return user.create_token(password)
