@@ -2,11 +2,9 @@ from datetime import date, datetime, timedelta
 from icalendar import Calendar, Event
 from flask import Blueprint, Response, request, abort
 from zoneinfo import ZoneInfo
-from requests import RequestException
 
 from .auth import *
-from .logic import get_user, create_user, user_exists
-from .models import User
+from .logic import get_user, create_user, user_exists, parse_job_period, build_description, build_pay_day
 
 bp = Blueprint("routes", __name__)
 
@@ -25,12 +23,6 @@ def get_token():
 
 @bp.route("/calendar", methods=['GET'])
 def calendar_feed():
-    def create_detail(template, **values):
-        for value in values.values():
-            if not value: return ""
-
-        return template.format(**values)
-
     token = request.args.get("token", "")
     user = get_user(token)
     if user is None:
@@ -43,45 +35,29 @@ def calendar_feed():
     cal.add("version", "2.0")
     cal.add("x-wr-calname", "High Society")
 
+    month = None
+    month_pay = 0
+    month_hours = 0
+
     for job in jobs:
         event = Event()
 
-        event_date = job.get("EventDate")
-        start_time = job.get("StartTime")
-        end_time = job.get("EndTime")
-        hour_length = 0
+        start_date, end_date, hour_length = parse_job_period(job)
 
-        if not (start_time and end_time):
-            start_date = end_date = date.fromisoformat(event_date[:10])
+        rate = float(job.get("StaffRate", 0))
+        pay = rate * hour_length
 
-        else:
-            base_date = datetime.fromisoformat(event_date).date()
-            start_time = datetime.fromisoformat(start_time).time()
-            end_time = datetime.fromisoformat(end_time).time()
+        details = build_description(job, hour_length, rate, pay)
 
-            start_date = datetime.combine(base_date, start_time)
-            end_date = datetime.combine(base_date, end_time)
+        if (month != start_date.month) and (month is not None):
+            pay_day = build_pay_day(date(start_date.year, start_date.month, 1), month_pay, month_hours)
+            cal.add_component(pay_day)
 
-            if end_date < start_date:
-                end_date += timedelta(days=1)
+            month_hours = month_pay = 0
 
-            start_date = start_date.replace(tzinfo=ZoneInfo("Europe/London")).astimezone(ZoneInfo("UTC"))
-            end_date = end_date.replace(tzinfo=ZoneInfo("Europe/London")).astimezone(ZoneInfo("UTC"))
-
-            hour_length = (end_date - start_date).total_seconds() / 3600
-
-        details = ""
-
-        details += create_detail("Role: {job_type}\n\n", job_type=job.get("JobType"))
-
-        if hour_length > 0:
-            rate = float(job.get("StaffRate"))
-            pay = calculate_pay(rate, hour_length)
-            details += f"Pay: {round(hour_length, 1)}h x £{rate:.2f} = £{pay:.2f}\n\n"
-
-        details += create_detail("Uniform: {uniform}\n\n", uniform=job.get("JobsUniforms"))
-
-        details += create_detail("Staffed Booked: {booked}/{required}\n\n", booked=job.get("StaffBooked"), required=job.get("StaffRequired"))
+        month = start_date.month
+        month_hours += hour_length
+        month_pay += pay
 
         event.add("summary", job.get("Client", ""))
         event.add("location", job.get("Venue", ""))
@@ -96,48 +72,13 @@ def calendar_feed():
 
     return Response(cal.to_ical(), mimetype="text/calendar")
 
-@bp.route("/pay", methods=['GET'])
-def month_pay():
-    token = request.args.get("token", "")
-
-    pay_month = datetime.today() - timedelta(days=12)
-    date_str = pay_month.strftime('%Y-%m-01')
-
-    jobs = get_jobs(token, from_date=date_str)
-
-    total_pay = 0
-
-    for job in jobs:
-        event_date = job.get("EventDate")
-        start_time = job.get("StartTime")
-        end_time = job.get("EndTime")
-        hour_length = 0
-
-        if start_time and end_time:
-            base_date = datetime.fromisoformat(event_date).date()
-            start_time = datetime.fromisoformat(start_time).time()
-            end_time = datetime.fromisoformat(end_time).time()
-
-            start_date = datetime.combine(base_date, start_time)
-            end_date = datetime.combine(base_date, end_time)
-
-            if end_date < start_date:
-                end_date += timedelta(days=1)
-
-            start_date = start_date.replace(tzinfo=ZoneInfo("Europe/London")).astimezone(ZoneInfo("UTC"))
-            end_date = end_date.replace(tzinfo=ZoneInfo("Europe/London")).astimezone(ZoneInfo("UTC"))
-
-            hour_length = (end_date - start_date).total_seconds() / 3600
-
-        if hour_length > 0:
-            rate = float(job.get("StaffRate"))
-            pay = calculate_pay(rate, hour_length)
-
-            total_pay += pay
-
-    return {"pay": total_pay, "formatted": f"{total_pay:.2f}"}
 
 @bp.route("/raw", methods=['GET'])
 def raw_job_data():
     token = request.args.get("token", "")
-    return get_jobs(token)
+    user = get_user(token)
+    if user is None:
+        abort(401, "Invalid Credentials")
+
+    return user.get_jobs()
+
