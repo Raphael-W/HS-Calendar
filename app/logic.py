@@ -102,7 +102,7 @@ def build_pay_day(month_date, pay, hours):
     description = f"Month's Pay: £{pay:.2f}\n\nMonth's Hours: {round(hours, 1)}h\n\n"
     description += "Please note: This is only an approximation as work hours/rate may differ. This calculation does not take fuel miles or taxi allowances into consideration"
 
-    pay_day.add("summary", "Pay Day")
+    pay_day.add("summary", "Pay Day!")
     pay_day.add("dtstart", pay_date_date)
     pay_day.add("dtend", pay_date_date)
     pay_day.add("dtstamp", datetime.now())

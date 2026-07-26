@@ -59,7 +59,7 @@ def calendar_feed():
 
         details = build_description(job, hour_length, rate, pay)
 
-        if (month != start_date.month) and (month is not None):
+        if (month != start_date.month) and (month_hours > 0) and (month is not None) :
             pay_day = build_pay_day(date(start_date.year, start_date.month, 1), month_pay, month_hours)
             cal.add_component(pay_day)
 

@@ -5,6 +5,7 @@ class BaseConfig:
     APP_PATH = os.path.dirname(os.path.abspath(__file__))
     ROOT_PATH = os.path.dirname(APP_PATH)
     INSTANCE_PATH = os.path.join(ROOT_PATH, "instance")
+    LOGS_PATH = os.path.join(ROOT_PATH, "logs")
     ENV_PATH = os.path.join(ROOT_PATH, ".env")
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + os.path.join(INSTANCE_PATH, "hs_calendar.db")
 

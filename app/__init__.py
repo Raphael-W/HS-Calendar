@@ -1,7 +1,33 @@
 import os
+import logging
+from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, make_response, render_template
 from werkzeug.exceptions import HTTPException
 from .extensions import db, migrate, limiter
+from pathlib import Path
+
+def configure_logging(app):
+    if app.config.get("TESTING", False):
+        return
+
+    log_dir = Path(app.config["LOGS_PATH"])
+    log_dir.mkdir(exist_ok=True)
+
+    log_path = log_dir / "app.log"
+
+    file_handler = RotatingFileHandler(log_path, maxBytes=1_000_000, backupCount=5)
+
+    formatter = logging.Formatter("[%(asctime)s] %(levelname)s in %(module)s (%(funcName)s): %(message)s")
+
+    file_handler.setFormatter(formatter)
+
+    level = logging.INFO
+
+    file_handler.setLevel(logging.INFO)
+
+    app.logger.setLevel(level)
+    app.logger.addHandler(file_handler)
+
 
 def create_app():
     app = Flask(__name__)
@@ -15,24 +41,21 @@ def create_app():
     migrate.init_app(app, db)
     limiter.init_app(app)
 
+    configure_logging(app)
+
     from . import models
 
     from .routes import bp as routes_bp
     app.register_blueprint(routes_bp)
 
-    # Statuses the sign-in form has to tell apart to word its own message:
-    # 400 missing details, 401 wrong password, 429 rate limited.
-    FORM_ERRORS = {400, 401, 429}
+    FORM_ERRORS = {400: "Invalid input", 401: "Invalid credentials", 429: "Too many requests"}
 
     def _error_page(status):
-        """The one generic error page: 404, or an unexplained failure."""
         html = render_template("error.html", not_found=(status == 404))
         return make_response(html, status)
 
     def _error_json(e):
-        # Deliberately carries no "description"/"message"/"error" text — the
-        # client supplies its own wording from the status code alone.
-        response = make_response(jsonify(status="error"), e.code)
+        response = make_response(jsonify(status="error", message=FORM_ERRORS.get(e.code, "")), e.code)
         if retry_after := e.get_response().headers.get("Retry-After"):
             response.headers["Retry-After"] = retry_after
         return response
@@ -42,7 +65,6 @@ def create_app():
         if e.code in FORM_ERRORS:
             return _error_json(e)
 
-        # Everything else is a page, and never says which error occurred.
         return _error_page(404 if e.code == 404 else 500)
 
     @app.errorhandler(Exception)
