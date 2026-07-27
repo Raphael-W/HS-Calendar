@@ -80,7 +80,7 @@ def calendar_feed():
 
     for (year, month), (pay, hours, shifts) in monthly_pay.items():
         if hours <= 0: continue
-        pay_month = date(year + (month == 12), (month + 1) % 12, 1)
+        pay_month = date(year + (month == 12), month % 12 + 1, 1)
         cal.add_component(build_pay_day(pay_month, pay, hours, shifts))
 
     db.session.commit()

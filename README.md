@@ -8,11 +8,11 @@ Subscribe once and the feed re-authenticates and refreshes on its own from then 
 
 There's no public API or documentation, so the first job was working out how the app talks to its backend:
 
-| Endpoint | Purpose |
-|---|---|
-| `POST /api/Authentication/Authenticate` | Username + password → JWT |
-| `GET /api/EMSSecurityUserItems60` | Username → internal staff ID |
-| `GET /api/BookedJobs65` | Every booked shift for a staff ID |
+| Endpoint                                | Purpose                           |
+|-----------------------------------------|-----------------------------------|
+| `POST /api/Authentication/Authenticate` | Username + password → JWT         |
+| `GET /api/EMSSecurityUserItems60`       | Username → internal staff ID      |
+| `GET /api/BookedJobs65`                 | Every booked shift for a staff ID |
 
 ## Security issues found, and disclosed
 
@@ -66,12 +66,12 @@ Plus: per-IP rate limiting (`CF-Connecting-IP` aware, so limits apply per client
 
 ## Endpoints
 
-| Route | Method | Purpose |
-|---|---|---|
-| `/` | GET | Sign-in page that generates a subscription link |
-| `/token` | POST | Credentials → encrypted token |
-| `/calendar?token=…` | GET | The iCalendar feed clients subscribe to |
-| `/raw?token=…` | GET | Raw upstream shift JSON, for debugging |
+| Route               | Method | Purpose                                         |
+|---------------------|--------|-------------------------------------------------|
+| `/`                 | GET    | Sign-in page that generates a subscription link |
+| `/token`            | POST   | Credentials → encrypted token                   |
+| `/calendar?token=…` | GET    | The iCalendar feed clients subscribe to         |
+| `/raw?token=…`      | GET    | Raw upstream shift JSON, for debugging          |
 
 ## Stack
 
