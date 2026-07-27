@@ -7,31 +7,36 @@ from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 from icalendar import Event
 
+# === Helpers ===
+def s(count):
+    if count > 1:
+        return "s"
+    return ""
+
 # === Users ===
 def create_user(username, password):
-    new_user = User(username=username)
+    new_user = User(username=username.lower())
     db.session.add(new_user)
     db.session.flush()
 
     jwt_token = authenticate_user(username, password)
     new_user.update_jwt(jwt_token)
 
-    db.session.commit()
     return new_user
 
 
 def get_user(token):
     try:
-        username, password, _ = decode_token(token)
+        decoded_token = decode_token(token)
     except:
         abort(400, "Invalid token")
 
-    user = User.query.filter_by(username=username).first()
+    user = User.query.filter_by(username=decoded_token["u"]).first()
     if (user is None) or (not user.verify_token(token)):
         return
 
     if not user.is_jwt_valid():
-        jwt_token = authenticate_user(username, password)
+        jwt_token = authenticate_user(decoded_token["u"], decoded_token["p"])
         user.update_jwt(jwt_token)
 
     return user
@@ -42,32 +47,39 @@ def user_exists(username):
 
 # === Calendar ===
 def parse_job_period(job):
-    event_date = job.get("EventDate")
-    start_time = job.get("StartTime")
-    end_time = job.get("EndTime")
+    try:
+        event_date = job.get("EventDate")
+        start_time = job.get("StartTime")
+        end_time = job.get("EndTime")
 
-    hour_length = 0
+        if event_date is None:
+            return None
 
-    if not (start_time and end_time):
-        start_date = end_date = date.fromisoformat(event_date[:10])
+        hour_length = 0
 
-    else:
-        base_date = datetime.fromisoformat(event_date).date()
-        start_time = datetime.fromisoformat(start_time).time()
-        end_time = datetime.fromisoformat(end_time).time()
+        if not (start_time and end_time):
+            start_date = end_date = date.fromisoformat(event_date[:10])
 
-        start_date = datetime.combine(base_date, start_time)
-        end_date = datetime.combine(base_date, end_time)
+        else:
+            base_date = datetime.fromisoformat(event_date).date()
+            start_time = datetime.fromisoformat(start_time).time()
+            end_time = datetime.fromisoformat(end_time).time()
 
-        if end_date < start_date:
-            end_date += timedelta(days = 1)
+            start_date = datetime.combine(base_date, start_time)
+            end_date = datetime.combine(base_date, end_time)
 
-        start_date = start_date.replace(tzinfo = ZoneInfo("Europe/London")).astimezone(ZoneInfo("UTC"))
-        end_date = end_date.replace(tzinfo = ZoneInfo("Europe/London")).astimezone(ZoneInfo("UTC"))
+            if end_date < start_date:
+                end_date += timedelta(days = 1)
 
-        hour_length = (end_date - start_date).total_seconds() / 3600
+            start_date = start_date.replace(tzinfo = ZoneInfo("Europe/London")).astimezone(ZoneInfo("UTC"))
+            end_date = end_date.replace(tzinfo = ZoneInfo("Europe/London")).astimezone(ZoneInfo("UTC"))
 
-    return start_date, end_date, hour_length
+            hour_length = (end_date - start_date).total_seconds() / 3600
+
+        return start_date, end_date, hour_length
+
+    except Exception:
+        return None
 
 
 def create_detail(template, **values):
@@ -92,15 +104,15 @@ def build_description(job, hour_length, rate, pay):
 
     return details
 
-def build_pay_day(month_date, pay, hours):
+def build_pay_day(month_date, pay, hours, shifts):
     pay_day = Event()
 
     pay_date_date = month_date.replace(day = 12)
     if (weekday := pay_date_date.weekday()) > 4:
         pay_date_date -= timedelta(days = weekday % 4)
 
-    description = f"Month's Pay: £{pay:.2f}\n\nMonth's Hours: {round(hours, 1)}h\n\n"
-    description += "Please note: This is only an approximation as work hours/rate may differ. This calculation does not take fuel miles or taxi allowances into consideration"
+    description = f"Pay: £{pay:.2f} (inc. £{pay * 0.1207:.2f} holiday pay)\n\nHours: {round(hours, 1)}h across {shifts} shift{s(shifts)}\n\n"
+    description += "Please note:\nThis is only an approximation and does not include fuel or taxi allowances."
 
     pay_day.add("summary", "Pay Day!")
     pay_day.add("dtstart", pay_date_date)

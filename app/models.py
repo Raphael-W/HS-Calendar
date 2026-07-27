@@ -35,9 +35,9 @@ class User(db.Model):
 
 
     def verify_token(self, token):
-        username, password, kid = decode_token(token)
-        valid_username = username == self.username
-        valid_kid = kid == self.kid
+        decoded_token = decode_token(token)
+        valid_username = decoded_token["u"] == self.username
+        valid_kid = decoded_token["kid"] == self.kid
         return valid_username and valid_kid
 
 
@@ -55,4 +55,6 @@ class User(db.Model):
         }
 
         response = make_hs_request("BookedJobs65", self.jwt, params = params)
-        return response.json()
+        if response.ok:
+            return response.json()
+        return {}

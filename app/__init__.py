@@ -29,10 +29,15 @@ def configure_logging(app):
     app.logger.addHandler(file_handler)
 
 
-def create_app():
+def create_app(config=None):
     app = Flask(__name__)
 
     app.config.from_object("app.config.BaseConfig")
+
+    # Applied before init_app, since the extensions bind their engines there and
+    # ignore later changes to the config.
+    if config:
+        app.config.update(config)
 
     os.makedirs(app.config["INSTANCE_PATH"], exist_ok=True)
 

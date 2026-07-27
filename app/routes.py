@@ -1,16 +1,15 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from icalendar import Calendar, Event
 from flask import Blueprint, Response, request, abort, render_template
-from zoneinfo import ZoneInfo
+from collections import defaultdict
 
 from .auth import *
 from .logic import get_user, create_user, user_exists, parse_job_period, build_description, build_pay_day
-from .extensions import limiter
+from .extensions import limiter, db
 
 bp = Blueprint("routes", __name__)
 
 @bp.route("/", methods=['GET'])
-@limiter.exempt
 def index():
     return render_template("index.html")
 
@@ -28,9 +27,12 @@ def get_token():
         return user.create_token(password)
 
     new_user = create_user(username, password)
+
+    db.session.commit()
     return new_user.create_token(password)
 
 @bp.route("/calendar", methods=['GET'])
+@limiter.limit("100 per hour")
 def calendar_feed():
     token = request.args.get("token", "")
     user = get_user(token)
@@ -44,30 +46,26 @@ def calendar_feed():
     cal.add("version", "2.0")
     cal.add("x-wr-calname", "High Society")
 
-    month = None
-    month_pay = 0
-    month_hours = 0
-    start_date = None
+    monthly_pay = defaultdict(lambda: [0.0, 0.0, 0])
 
     for job in jobs:
         event = Event()
 
-        start_date, end_date, hour_length = parse_job_period(job)
+        if parsed_job := parse_job_period(job):
+            start_date, end_date, hour_length = parsed_job
+        else:
+            continue
 
-        rate = float(job.get("StaffRate", 0))
+        rate = float(job.get("StaffRate")) or 0
         pay = rate * hour_length
 
         details = build_description(job, hour_length, rate, pay)
 
-        if (month != start_date.month) and (month_hours > 0) and (month is not None) :
-            pay_day = build_pay_day(date(start_date.year, start_date.month, 1), month_pay, month_hours)
-            cal.add_component(pay_day)
-
-            month_hours = month_pay = 0
-
-        month = start_date.month
-        month_hours += hour_length
-        month_pay += pay
+        # Add payment to monthly total
+        totals = monthly_pay[(start_date.year, start_date.month)]
+        totals[0] += pay
+        totals[1] += hour_length
+        totals[2] += 1
 
         event.add("summary", job.get("Client", ""))
         event.add("location", job.get("Venue", ""))
@@ -80,18 +78,16 @@ def calendar_feed():
 
         cal.add_component(event)
 
-    if month_hours > 0:
-        if start_date.month == 12:
-            next_month_date = date(start_date.year + 1, 1, 1)
-        else:
-            next_month_date = date(start_date.year, start_date.month + 1, 1)
+    for (year, month), (pay, hours, shifts) in monthly_pay.items():
+        if hours <= 0: continue
+        pay_month = date(year + (month == 12), (month + 1) % 12, 1)
+        cal.add_component(build_pay_day(pay_month, pay, hours, shifts))
 
-        pay_day = build_pay_day(next_month_date, month_pay, month_hours)
-        cal.add_component(pay_day)
-
+    db.session.commit()
     return Response(cal.to_ical(), mimetype="text/calendar")
 
 @bp.route("/raw", methods=['GET'])
+@limiter.limit("100 per hour")
 def raw_job_data():
     token = request.args.get("token", "")
     user = get_user(token)

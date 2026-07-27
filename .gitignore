@@ -20,6 +20,7 @@ uv-cache/
 
 # Project
 /instance
+/logs
 
 # IDE
 .idea/

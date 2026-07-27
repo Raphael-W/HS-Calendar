@@ -13,5 +13,11 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "requests>=2.34.2",
     "sqlalchemy>=2.0.51",
-    "gunicorn>=26.0.0"
+    "gunicorn>=26.0.0",
+    "pytest>=9.1.1",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = ["live: hits the real upstream API; needs test credentials"]

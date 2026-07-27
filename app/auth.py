@@ -4,10 +4,6 @@ import requests
 from .extensions import fernet
 from flask import abort
 
-# === Logic ===
-def calculate_pay(rate, hours):
-    return rate * hours
-
 
 # === JWT ===
 def decode_jwt(jwt_token):
@@ -22,9 +18,8 @@ def make_token(username: str, password: str, kid: int) -> str:
     return fernet.encrypt(payload).decode()
 
 
-def decode_token(token: str) -> tuple[str, str, int]:
-    payload = json.loads(fernet.decrypt(token.encode()))
-    return payload["u"], payload["p"], payload["kid"]
+def decode_token(token: str) -> dict:
+    return json.loads(fernet.decrypt(token.encode()))
 
 
 # === REQUESTS ===
@@ -38,7 +33,7 @@ def make_hs_request(endpoint, auth=None, method="GET", params=None, json_params=
     if json_params is None: json_params = {}
 
     url = f"https://hsstaffapi65.high-society.co.uk/api/{endpoint}"
-    r = requests.request(method, url, params=params, headers=headers, json=json_params)
+    r = requests.request(method, url, params=params, headers=headers, json=json_params, timeout=(5, 15))
     return r
 
 

@@ -5,12 +5,18 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask import request
 
+import os
+
 from cryptography.fernet import Fernet
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 
 from .config import BaseConfig
 
-encryption_key = dotenv_values(BaseConfig.ENV_PATH)["ENCRYPTION_KEY"].encode()
+# Real environment variables win over .env, so deployments and CI can supply the
+# key without a file on disk.
+load_dotenv(BaseConfig.ENV_PATH)
+
+encryption_key = os.environ["ENCRYPTION_KEY"].encode()
 fernet = Fernet(encryption_key)
 
 
@@ -20,4 +26,4 @@ def _get_client_ip():
 
 db = SQLAlchemy()
 migrate = Migrate()
-limiter = Limiter(_get_client_ip, default_limits=["100 per hour"])
+limiter = Limiter(_get_client_ip, default_limits=[])
