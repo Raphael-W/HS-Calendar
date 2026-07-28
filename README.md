@@ -1,8 +1,14 @@
+# Sign up
+To use the calendar, visit **[hs.raphaelwreford.com](https://hs.raphaelwreford.com)** and enter your High Society login and you'll get a subscription link to add to your calendar.
+
+---
+
 # HS Calendar
 
 A self-hosted Flask service that turns High Society staff shifts into a live calendar subscription, so they appear automatically in iOS Calendar, Google Calendar or Outlook — with pay rates, staffing count and uniform requirements the official app never shows.
 
 Subscribe once and the feed re-authenticates and refreshes on its own from then on.
+
 
 ## Why?
 
