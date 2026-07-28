@@ -83,6 +83,7 @@ def calendar_feed():
         pay_month = date(year + (month == 12), month % 12 + 1, 1)
         cal.add_component(build_pay_day(pay_month, pay, hours, shifts))
 
+    user.mark_synced()
     db.session.commit()
     return Response(cal.to_ical(), mimetype="text/calendar")
 

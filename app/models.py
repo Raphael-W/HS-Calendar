@@ -13,6 +13,7 @@ class User(db.Model):
     expiry = db.Column(db.Integer, nullable=True)
     staff_id = db.Column(db.Integer, nullable=True)
     kid = db.Column(db.Integer, nullable=False, default=1, server_default="1")
+    last_sync = db.Column(db.Integer, nullable=True)
 
 
     def is_jwt_valid(self):
@@ -71,3 +72,6 @@ class User(db.Model):
                 abort(500, "There was a problem fetching your shifts")
 
         return all_jobs
+
+    def mark_synced(self):
+        self.last_sync = time.time()
