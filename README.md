@@ -4,9 +4,18 @@ A self-hosted Flask service that turns High Society staff shifts into a live cal
 
 Subscribe once and the feed re-authenticates and refreshes on its own from then on.
 
+## Why?
+
+High Society is a catering agency that books waiters onto events via its own staff app. The app has two problems:
+
+- **Shifts are buried behind menus.** Finding the date or location of a shift takes several taps, and there's no way to see your week at a glance or spot a double-booking against the rest of your life.
+- **The API returns more than the app shows.** Each shift's response includes the rate of pay (which varies per shift and is never disclosed to staff) and how many waiters are booked (a good proxy for event size) — the app displays neither.
+
+A subscription calendar solves both: shifts appear automatically in the calendar you already use, updating whenever your schedule changes, with the hidden pay and staffing data on every event.
+
 ## Reverse-engineering the API
 
-There's no public API or documentation, so the first job was working out how the app talks to its backend:
+There's no public API or documentation, so the first job was working out how the app talks to its backend. I used [mitmproxy](https://mitmproxy.org/) to inspect the traffic from the High Society app on my phone, capturing each request, and intercepting to edit requests and responses.
 
 | Endpoint                                | Purpose                           |
 |-----------------------------------------|-----------------------------------|
