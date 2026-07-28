@@ -1,5 +1,6 @@
 import time
 import json
+from flask import abort
 
 from .extensions import db
 from .auth import decode_jwt, decode_token, make_token, make_hs_request, authenticate_user
@@ -52,9 +53,21 @@ class User(db.Model):
             "staffId"  : self.staff_id,
             "eventDate": from_date,
             "history"  : "false",
+            "pageSize" : 50,
+            "page"     : 1,
         }
 
-        response = make_hs_request("BookedJobs65", self.jwt, params = params)
-        if response.ok:
-            return response.json()
-        return {}
+        all_jobs = []
+        while True:
+            response = make_hs_request("BookedJobs65", self.jwt, params = params)
+            if response.ok:
+                returned_jobs = response.json()
+                all_jobs += returned_jobs
+                params["page"] += 1
+
+                if len(returned_jobs) < params["pageSize"]:
+                    break
+            else:
+                abort(500, "There was a problem fetching your shifts")
+
+        return all_jobs
