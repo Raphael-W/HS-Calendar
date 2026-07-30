@@ -1,6 +1,7 @@
 import time
 import json
 from flask import abort
+from sqlalchemy import true
 
 from .extensions import db
 from .auth import decode_jwt, decode_token, make_token, make_hs_request, authenticate_user
@@ -39,7 +40,11 @@ class User(db.Model):
     def verify_token(self, token):
         decoded_token = decode_token(token)
         valid_username = decoded_token["u"] == self.username
-        valid_kid = decoded_token["kid"] == self.kid
+
+        valid_kid = True
+        if token_kid := decoded_token.get("kid"):
+            valid_kid = token_kid == self.kid
+
         return valid_username and valid_kid
 
 
