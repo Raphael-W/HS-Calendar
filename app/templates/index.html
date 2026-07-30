@@ -271,27 +271,58 @@
     overflow-y: auto;
   }
 
-  .steps {
-    margin: 22px 0 0;
-    padding: 18px 0 0;
-    border-top: 1px solid var(--line-soft);
+  .cal-btns {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 22px;
   }
-  .steps h3 {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .1em;
-    text-transform: uppercase;
+  a.cal-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    background: linear-gradient(180deg, var(--gold-soft), var(--gold));
+    color: #24200f;
+    border-radius: 9px;
+    font: 600 14.5px/1 var(--sans);
+    letter-spacing: .01em;
+    padding: 14px;
+    text-decoration: none;
+    transition: filter .16s, transform .08s;
+  }
+  a.cal-btn:hover { filter: brightness(1.07); }
+  a.cal-btn:active { transform: translateY(1px); }
+  a.cal-btn.alt {
+    background: none;
+    border: 1px solid var(--gold);
+    color: var(--gold-soft);
+  }
+  a.cal-btn.alt:hover { background: rgba(201,162,39,.08); }
+
+  .manual > summary {
+    list-style: none;
+    text-align: center;
+    font-size: 12.5px;
     color: var(--ink-faint);
-    margin: 0 0 11px;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color .16s;
+    user-select: none;
   }
-  .steps ol { margin: 0; padding-left: 17px; }
-  .steps li {
-    font-size: 13px;
-    line-height: 1.65;
-    color: var(--ink-dim);
-    margin-bottom: 5px;
+  .manual > summary::-webkit-details-marker { display: none; }
+  .manual > summary::after {
+    content: "▾";
+    margin-left: 6px;
+    font-size: 15px;
+    vertical-align: -1px;
+    display: inline-block;
+    transition: transform .16s;
   }
-  .steps li::marker { color: var(--gold); font-variant-numeric: tabular-nums; }
+  .manual[open] > summary::after { transform: rotate(180deg); }
+  .manual > summary:hover { color: var(--ink-dim); }
+  .manual .out-label { margin-top: 14px; }
 
   /* Security note on the result stage */
   .notice {
@@ -405,20 +436,19 @@
         <p>Subscribe once and your shifts stay in sync.</p>
       </div>
 
-      <div class="out-label">
-        <label for="url">Subscription URL</label>
-        <button class="copy" id="copy" type="button">Copy</button>
+      <div class="cal-btns">
+        <a class="cal-btn" id="add-apple" href="#">Add to Apple Calendar / Outlook</a>
+        <a class="cal-btn alt" id="add-google" href="#" target="_blank" rel="noopener">Add to Google Calendar</a>
       </div>
-      <div class="out" id="url"></div>
 
-      <div class="steps">
-        <h3>How to subscribe</h3>
-        <ol>
-          <li><strong>iPhone / iPad:</strong> Calendar App → Calendars → Add Calendar → Add Subscription Calendar.</li>
-          <li><strong>Google Calendar:</strong> Other calendars → + → From URL.</li>
-          <li><strong>Outlook:</strong> Add calendar → Subscribe from web.</li>
-        </ol>
-      </div>
+      <details class="manual">
+        <summary>Or copy link manually</summary>
+        <div class="out-label">
+          <label for="url">Subscription URL</label>
+          <button class="copy" id="copy" type="button">Copy</button>
+        </div>
+        <div class="out" id="url"></div>
+      </details>
 
       <div class="notice">
         <h3>Keep this link private</h3>
@@ -457,6 +487,8 @@
   const stageForm   = document.getElementById("stage-form");
   const stageResult = document.getElementById("stage-result");
   const urlOut      = document.getElementById("url");
+  const addApple    = document.getElementById("add-apple");
+  const addGoogle   = document.getElementById("add-google");
   const copyBtn     = document.getElementById("copy");
   const restartBtn  = document.getElementById("restart");
 
@@ -544,7 +576,12 @@
   }
 
   function showResult(token) {
-    urlOut.textContent = new URL("/calendar?token=" + encodeURIComponent(token), location.origin).href;
+    const httpsUrl  = new URL("/calendar?token=" + encodeURIComponent(token), location.origin).href;
+    const webcalUrl = httpsUrl.replace(/^https?:/, "webcal:");
+    urlOut.textContent = httpsUrl;
+    addApple.href  = webcalUrl;
+    addGoogle.href = "https://calendar.google.com/calendar/render?cid=" + encodeURIComponent(webcalUrl);
+    document.querySelector(".manual").removeAttribute("open");
     stageForm.classList.add("hidden");
     stageResult.classList.remove("hidden");
     copyBtn.textContent = "Copy";
